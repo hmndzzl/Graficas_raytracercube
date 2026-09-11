@@ -5,6 +5,7 @@ pub struct Cube {
     pub min: Vec3,
     pub max: Vec3,
     pub material: Material,
+    pub top_material: Option<Material>,
 }
 
 impl RayIntersect for Cube {
@@ -35,25 +36,50 @@ impl RayIntersect for Cube {
         let point = ray_origin + ray_direction * distance;
         
         let epsilon = 1e-4;
+        let u;
+        let v;
+        let mut hit_top = false;
+        
         let normal = if (point.x - self.max.x).abs() < epsilon {
+            u = (point.z - self.min.z) / (self.max.z - self.min.z);
+            v = (point.y - self.min.y) / (self.max.y - self.min.y);
             Vec3::new(1.0, 0.0, 0.0)
         } else if (point.x - self.min.x).abs() < epsilon {
+            u = (self.max.z - point.z) / (self.max.z - self.min.z);
+            v = (point.y - self.min.y) / (self.max.y - self.min.y);
             Vec3::new(-1.0, 0.0, 0.0)
         } else if (point.y - self.max.y).abs() < epsilon {
+            u = (point.x - self.min.x) / (self.max.x - self.min.x);
+            v = (self.max.z - point.z) / (self.max.z - self.min.z);
+            hit_top = true;
             Vec3::new(0.0, 1.0, 0.0)
         } else if (point.y - self.min.y).abs() < epsilon {
+            u = (point.x - self.min.x) / (self.max.x - self.min.x);
+            v = (point.z - self.min.z) / (self.max.z - self.min.z);
             Vec3::new(0.0, -1.0, 0.0)
         } else if (point.z - self.max.z).abs() < epsilon {
+            u = (self.max.x - point.x) / (self.max.x - self.min.x);
+            v = (point.y - self.min.y) / (self.max.y - self.min.y);
             Vec3::new(0.0, 0.0, 1.0)
         } else {
+            u = (point.x - self.min.x) / (self.max.x - self.min.x);
+            v = (point.y - self.min.y) / (self.max.y - self.min.y);
             Vec3::new(0.0, 0.0, -1.0)
+        };
+
+        let selected_material = if hit_top {
+            self.top_material.as_ref().unwrap_or(&self.material).clone()
+        } else {
+            self.material.clone()
         };
 
         Some(Intersect {
             point,
             normal,
             distance,
-            material: self.material,
+            u,
+            v,
+            material: selected_material,
         })
     }
 }

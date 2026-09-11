@@ -4,10 +4,12 @@ mod cube;
 mod framebuffer;
 mod light;
 mod ray_intersect;
+mod texture;
 
 use minifb::{Key, Window, WindowOptions};
 use nalgebra_glm::{Vec3, dot, normalize};
 use std::f32::consts::PI;
+use std::sync::Arc;
 use std::time::Duration;
 
 use crate::camera::Camera;
@@ -16,6 +18,7 @@ use crate::cube::Cube;
 use crate::framebuffer::Framebuffer;
 use crate::light::Light;
 use crate::ray_intersect::{Intersect, Material, RayIntersect};
+use crate::texture::Texture;
 
 const WIDTH: usize = 800;
 const HEIGHT: usize = 600;
@@ -67,9 +70,13 @@ pub fn shade(
 
     let light_intensity = light.intensity * shadow_intensity;
 
+    let base_color = match &intersect.material.texture {
+        Some(texture) => texture.get_color(intersect.u, intersect.v),
+        None => intersect.material.diffuse,
+    };
+
     let diffuse_intensity = dot(&intersect.normal, &light_direction).max(0.0);
-    let diffuse = intersect.material.diffuse
-        * (diffuse_intensity * intersect.material.albedo[0] * light_intensity);
+    let diffuse = base_color * (diffuse_intensity * intersect.material.albedo[0] * light_intensity);
 
     let reflect_direction = reflect(&-light_direction, &intersect.normal);
     let specular_intensity = dot(&view_direction, &reflect_direction)
@@ -79,7 +86,7 @@ pub fn shade(
     let specular =
         light.color * (specular_intensity * intersect.material.albedo[1] * light_intensity);
 
-    let ambient = intersect.material.diffuse * 0.15;
+    let ambient = base_color * 0.15;
 
     diffuse + specular + ambient
 }
@@ -99,7 +106,10 @@ pub fn cast_ray(
 
     for object in objects {
         if let Some(intersect) = object.ray_intersect(ray_origin, ray_direction) {
-            if closest.is_none_or(|current| intersect.distance < current.distance) {
+            if closest
+                .as_ref()
+                .is_none_or(|current| intersect.distance < current.distance)
+            {
                 closest = Some(intersect);
             }
         }
@@ -170,20 +180,29 @@ fn main() {
     let mut window =
         Window::new("Raytracer Cube", WIDTH, HEIGHT, WindowOptions::default()).unwrap();
 
-    let diffuse_mat = Material::new(Color::new(255, 140, 0), 0.0, [1.0, 0.0, 0.0]);
-    let floor_mat = Material::new(Color::new(120, 120, 120), 0.0, [1.0, 0.0, 0.0]);
+    let texture = Arc::new(Texture::new("assets/creaking_heart_awake.png"));
+    let diffuse_mat =
+        Material::new(Color::new(255, 140, 0), 0.0, [1.0, 0.0, 0.0]).with_texture(texture);
+
+    let top_texture = Arc::new(Texture::new("assets/creaking_heart_top_awake.png"));
+    let top_mat =
+        Material::new(Color::new(255, 140, 0), 0.0, [1.0, 0.0, 0.0]).with_texture(top_texture);
+
+    let floor_mat = Material::new(Color::new(40, 40, 40), 0.0, [1.0, 0.0, 0.0]);
 
     let objects: Vec<Box<dyn RayIntersect>> = vec![
         Box::new(Cube {
             min: Vec3::new(-1.0, -1.0, -1.0),
             max: Vec3::new(1.0, 1.0, 1.0),
             material: diffuse_mat,
+            top_material: Some(top_mat),
         }),
         Box::new(Cube {
             min: Vec3::new(-5.0, -1.5, -5.0),
             max: Vec3::new(5.0, -1.0, 5.0),
             material: floor_mat,
-        })
+            top_material: None,
+        }),
     ];
 
     let light = Light::new(Vec3::new(-6.0, 6.0, 8.0), Color::new(255, 255, 255), 1.5);
