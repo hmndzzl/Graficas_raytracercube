@@ -6,8 +6,8 @@ Una implementación de un **motor de trazado de rayos (Raytracer)** escrito desd
 
 ## 📸 Demo
 
-*(Añade aquí una captura de pantalla o GIF de tu cubo renderizado)*
-<img width="800" height="600" alt="Raytracer Demo" src="https://github.com/user-attachments/assets/d337e6c7-f819-4ed7-921e-d57fe7dd73c9" />
+<img width="800" height="624" alt="Raytracer Demo" src="https://github.com/user-attachments/assets/cff85b62-7c63-4e4d-af6f-18ce80356326" />
+
 
 ## 🚀 Características Principales
 
